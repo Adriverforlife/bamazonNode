@@ -1,7 +1,2 @@
-Solutions/
-solutions/
-Solution/
-solution/
-Solved/
-solved/
-!00-Before-Class/*/**/*
+node_modules
+package-lock.json
