@@ -50,8 +50,11 @@ function buyItem() {
       .then(function (answer) {
         // get the information of the chosen item
         var chosenItem;
+        var userChoice = answer.choice
         for (var i = 0; i < results.length; i++) {
-          if (answer.choice.includes(results[i].product_name)) {
+          var prodName=results[i].product_name+": $"
+          var nameCheck = answer.choice.substr(0,prodName.length)
+          if (nameCheck==(results[i].product_name+": $")) {
             chosenItem = results[i];
           }
         }
