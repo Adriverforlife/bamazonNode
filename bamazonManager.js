@@ -1,4 +1,5 @@
 var mysql = require("mysql");
+var inquirer = require("inquirer");
 
 var connection = mysql.createConnection({
   host: "localhost",
@@ -17,15 +18,70 @@ var connection = mysql.createConnection({
 connection.connect(function (err) {
   if (err) throw err;
   console.log("connected as id " + connection.threadId + "\n");
-  buyItem();
+  managerStart();
 });
 
-function buyItem() {
+// manager start code
+function managerStart() {
+  connection.query("SELECT * FROM products", function (err, results) {
+    if (err) throw err;
+    // once you have the items, prompt the user for which they'd like to bid on
+
+    inquirer
+      .prompt([
+        {
+          name: "managerChoice",
+          type: "list",
+          choices: [`View Products for Sale`, `View Low Inventory`, `Add to Inventory`, `Add New Product`],
+          message: "What would you like to do?"
+        }
+      ])
+      .then(function (answer) {
+        if (answer.managerChoice == `View Products for Sale`) {
+          console.log("Selecting all products...\n");
+          viewInv()
+        }
+        if (answer.managerChoice == 'View Low Inventory') {
+          viewLow()
+        }
+        if (answer.managerChoice == 'Add to Inventory') {
+          addInv()
+        }
+        connection.end()
+      });
+  });
+
+}
+//end manager select~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//begining of view products
+function viewInv() {
+  connection.query("SELECT * FROM products", function (err, res) {
+    if (err) throw err;
+    // Log all results of the SELECT statement
+    console.log(JSON.stringify(res, null, 2));
+  });
+}
+//begining of view low inventory
+function viewLow() {
+  connection.query("SELECT * FROM products", function (err, res) {
+    if (err) throw err;
+    // Log all results of the SELECT statement
+    for (var i = 0; i < res.length; i++) {
+      if (parseInt(res[i].stock_quantity) < 5) {
+        console.log(JSON.stringify(res[i], null, 2));
+      }
+    }
+  });
+}
+//end of low inventory~~~~~~~~~~~~~~~~~~~~~~~beginning of add to inventory
+
+
+//end of add to inventory
+function addInv() {
   // query the database for all items being auctioned
   connection.query("SELECT * FROM products", function (err, results) {
     if (err) throw err;
     // once you have the items, prompt the user for which they'd like to bid on
-    var inquirer = require("inquirer");
 
     inquirer
       .prompt([
@@ -47,43 +103,34 @@ function buyItem() {
           message: "How many would you like to purchase?"
         }
       ])
-      .then(function (answer) {
+      .then(function (invAdjustment) {
         // get the information of the chosen item
         var chosenItem;
-        var userChoice = answer.choice
         for (var i = 0; i < results.length; i++) {
           var prodName=results[i].product_name+": $"
-          var nameCheck = answer.choice.substr(0,prodName.length)
+          var nameCheck = invAdjustment.choice.substr(0,prodName.length)
           if (nameCheck==(results[i].product_name+": $")) {
             chosenItem = results[i];
           }
         }
+        console.log(chosenItem)
         // determine if bid was high enough
-        if (parseInt(chosenItem.stock_quantity) >= parseInt(answer.quantity)) {
-          // bid was high enough, so update db, let the user know, and start over
-          connection.query(
-            "UPDATE products SET ? WHERE ?",
-            [
-              {
-                stock_quantity: (chosenItem.stock_quantity-parseInt(answer.quantity))
-              },
-              {
-                id: parseInt(chosenItem.id)
-              }
-            ],
-            function (error) {
-              if (error) throw err;
-              console.log("Thank you for your order. Your total is $"+(chosenItem.price*answer.quantity));
-              connection.end()
-            }
-          );
-        }
-        else{
-          // bid wasn't high enough, so apologize and start over
-          console.log("Insuffient Stock for this order.")
-
-          connection.end()
-        }
+        connection.query(
+          "UPDATE products SET ? WHERE ?",
+          [
+            {
+              stock_quantity: (chosenItem.stock_quantity+parseInt(invAdjustment.quantity))
+            },
+            {
+              product_name: chosenItem.product_name
+            },
+          ],
+          function (error) {
+            if (error) throw err;
+            console.log("Thank you for restocking");
+          }
+        )
+      
       });
   });
 }
